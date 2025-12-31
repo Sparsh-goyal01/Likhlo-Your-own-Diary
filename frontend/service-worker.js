@@ -5,7 +5,7 @@
 // by caching static assets and handling network requests strategically.
 
 // Cache version - increment this when you update files to force cache refresh
-const CACHE_VERSION = 'v1.0.0';
+const CACHE_VERSION = 'v2.0.1';
 const CACHE_NAME = `likhlo-cache-${CACHE_VERSION}`;
 
 // Static assets to cache during service worker installation

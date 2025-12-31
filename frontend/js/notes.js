@@ -33,9 +33,11 @@ onAuthStateChanged(auth, (user) => {
     // Update user info in UI
     const userName = document.getElementById('user-name');
     const userEmail = document.getElementById('user-email');
+    const userDisplayName = document.getElementById('user-display-name');
 
     if (userName) userName.textContent = user.displayName || 'User';
     if (userEmail) userEmail.textContent = user.email;
+    if (userDisplayName) userDisplayName.textContent = user.displayName || 'User';
 
     // Load notes
     loadNotes();
@@ -101,18 +103,58 @@ function renderNotes(notes) {
         const noteCard = createNoteCard(note);
         notesContainer.appendChild(noteCard);
     });
+    
+    // Apply current filter
+    applyFilter();
 }
+
+// Note card colors
+const noteColors = [
+    'color-pink', 'color-purple', 'color-blue', 'color-cyan',
+    'color-green', 'color-yellow', 'color-orange', 'color-red',
+    'color-lavender', 'color-mint', 'color-peach', 'color-sky'
+];
 
 // ===== CREATE NOTE CARD ELEMENT =====
 function createNoteCard(note) {
     const card = document.createElement('div');
-    card.className = 'note-card';
+    
+    // Assign color - use stored color or generate new one
+    const noteColor = note.color || noteColors[Math.floor(Math.random() * noteColors.length)];
+    card.className = `note-card ${noteColor}`;
     card.dataset.noteId = note.id;
 
     const createdDate = note.createdAt ? formatDate(note.createdAt.toDate()) : 'Just now';
     const updatedDate = note.updatedAt ? formatDate(note.updatedAt.toDate()) : createdDate;
 
+    // Build category badges HTML
+    let categoriesHtml = '';
+    if (note.categories && note.categories.length > 0) {
+        categoriesHtml = '<div class="note-categories">';
+        note.categories.forEach(category => {
+            if (category === 'important') {
+                categoriesHtml += `
+                    <span class="category-badge important">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                        Important
+                    </span>`;
+            } else if (category === 'bookmarked') {
+                categoriesHtml += `
+                    <span class="category-badge bookmarked">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Bookmarked
+                    </span>`;
+            }
+        });
+        categoriesHtml += '</div>';
+    }
+
     card.innerHTML = `
+        ${categoriesHtml}
         <div class="note-card-header">
             <h3>${escapeHtml(note.title)}</h3>
             <div class="note-card-actions">
@@ -168,10 +210,16 @@ function openAddModal() {
     const modal = document.getElementById('note-modal');
     const modalTitle = document.getElementById('modal-title');
     const noteForm = document.getElementById('note-form');
+    const importantCheckbox = document.getElementById('category-important');
+    const bookmarkedCheckbox = document.getElementById('category-bookmarked');
 
     currentNoteId = null;
     modalTitle.textContent = 'New Note';
     noteForm.reset();
+    
+    // Reset category checkboxes
+    if (importantCheckbox) importantCheckbox.checked = false;
+    if (bookmarkedCheckbox) bookmarkedCheckbox.checked = false;
 
     modal.style.display = 'flex';
     document.getElementById('note-title').focus();
@@ -183,11 +231,17 @@ function openEditModal(note) {
     const modalTitle = document.getElementById('modal-title');
     const titleInput = document.getElementById('note-title');
     const contentInput = document.getElementById('note-content');
+    const importantCheckbox = document.getElementById('category-important');
+    const bookmarkedCheckbox = document.getElementById('category-bookmarked');
 
     currentNoteId = note.id;
     modalTitle.textContent = 'Edit Note';
     titleInput.value = note.title;
     contentInput.value = note.content;
+
+    // Set category checkboxes
+    if (importantCheckbox) importantCheckbox.checked = note.categories?.includes('important') || false;
+    if (bookmarkedCheckbox) bookmarkedCheckbox.checked = note.categories?.includes('bookmarked') || false;
 
     modal.style.display = 'flex';
     titleInput.focus();
@@ -202,6 +256,11 @@ if (noteForm) {
         const saveBtn = document.getElementById('save-note-btn');
         const title = document.getElementById('note-title').value.trim();
         const content = document.getElementById('note-content').value.trim();
+        
+        // Get selected categories
+        const categories = [];
+        if (document.getElementById('category-important')?.checked) categories.push('important');
+        if (document.getElementById('category-bookmarked')?.checked) categories.push('bookmarked');
 
         if (!title || !content) {
             alert('Please fill in all fields');
@@ -210,7 +269,7 @@ if (noteForm) {
 
         try {
             setLoading(saveBtn, true);
-            console.log('Saving note...', { title, content, isUpdate: !!currentNoteId });
+            console.log('Saving note...', { title, content, categories, isUpdate: !!currentNoteId });
 
             const notesRef = collection(db, 'users', currentUser.uid, 'notes');
 
@@ -226,10 +285,11 @@ if (noteForm) {
                 closeNoteModal();
                 setLoading(saveBtn, false);
 
-                // Update in background
+                // Update in background (don't change color on edit)
                 updateDoc(noteDoc, {
                     title,
                     content,
+                    categories,
                     updatedAt: now
                 }).then(() => {
                     console.log('Note updated successfully!');
@@ -249,15 +309,17 @@ if (noteForm) {
                 });
 
             } else {
-                // Create new note
+                // Create new note with random color
+                const randomColor = noteColors[Math.floor(Math.random() * noteColors.length)];
+                
                 // Close modal immediately for better UX
                 closeNoteModal();
                 setLoading(saveBtn, false);
 
-                // Add in background
+                // Create in background
                 addDoc(notesRef, {
                     title,
-                    content,
+                    content,                    categories,                    color: randomColor,
                     createdAt: now,
                     updatedAt: now
                 }).then((docRef) => {
@@ -382,68 +444,128 @@ if (searchInput) {
     });
 }
 
-// ===== VIEW TOGGLE =====
-const gridViewBtn = document.getElementById('grid-view');
-const listViewBtn = document.getElementById('list-view');
-const notesContainer = document.getElementById('notes-container');
+// ===== UI INITIALIZATION (after DOM loaded) =====
+let currentFilter = 'all';
 
-if (gridViewBtn) {
-    gridViewBtn.addEventListener('click', () => {
-        currentView = 'grid';
-        notesContainer.classList.remove('list-view');
-        gridViewBtn.classList.add('active');
-        listViewBtn.classList.remove('active');
-    });
-}
+// Wait for DOM to be fully loaded before attaching event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('[Dashboard] DOM fully loaded, initializing UI event listeners');
+    
+    // ===== USER MENU =====
+    const menuToggle = document.getElementById('menu-toggle');
+    const userDropdown = document.getElementById('user-dropdown');
 
-if (listViewBtn) {
-    listViewBtn.addEventListener('click', () => {
-        currentView = 'list';
-        notesContainer.classList.add('list-view');
-        listViewBtn.classList.add('active');
-        gridViewBtn.classList.remove('active');
-    });
-}
+    if (menuToggle && userDropdown) {
+        console.log('[Dashboard] Menu toggle and dropdown found, attaching listeners');
+        
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVisible = userDropdown.style.display === 'block';
+            userDropdown.style.display = isVisible ? 'none' : 'block';
+            console.log('[Dashboard] Menu toggled, visible:', !isVisible);
+        });
 
-// ===== USER MENU =====
-const userMenuBtn = document.getElementById('user-menu-btn');
-const userDropdown = document.getElementById('user-dropdown');
+        // Close dropdown when clicking outside
+        document.addEventListener('click', () => {
+            userDropdown.style.display = 'none';
+        });
+        
+        // Prevent clicks inside dropdown from closing it
+        userDropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    } else {
+        console.warn('[Dashboard] Menu toggle or dropdown not found');
+    }
 
-if (userMenuBtn && userDropdown) {
-    userMenuBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const isVisible = userDropdown.style.display === 'block';
-        userDropdown.style.display = isVisible ? 'none' : 'block';
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', () => {
-        userDropdown.style.display = 'none';
-    });
-}
-
-// ===== LOGOUT =====
-const logoutBtn = document.getElementById('logout-btn');
-if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-        try {
-            if (notesUnsubscribe) {
-                notesUnsubscribe();
+    // ===== LOGOUT =====
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        console.log('[Dashboard] Logout button found, attaching click listener');
+        
+        logoutBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            console.log('[Dashboard] Logout button clicked, signing out...');
+            
+            try {
+                // Clean up Firestore listener
+                if (notesUnsubscribe) {
+                    notesUnsubscribe();
+                }
+                
+                // Sign out from Firebase
+                await signOut(auth);
+                console.log('[Dashboard] Sign out successful, redirecting to login page');
+                
+                // Redirect to login page
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('[Dashboard] Logout error:', error);
+                alert('Failed to logout. Please try again.');
             }
-            await signOut(auth);
-            window.location.href = 'index.html';
-        } catch (error) {
-            console.error('Logout error:', error);
-            alert('Failed to logout. Please try again.');
+        });
+    } else {
+        console.error('[Dashboard] Logout button (#logout-btn) not found in DOM!');
+    }
+
+    // ===== FILTER BUTTONS =====
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    if (filterButtons.length > 0) {
+        console.log('[Dashboard] Found', filterButtons.length, 'filter buttons');
+        
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                currentFilter = btn.dataset.filter;
+                applyFilter();
+            });
+        });
+    }
+});
+
+function applyFilter() {
+    const noteCards = document.querySelectorAll('.note-card');
+    let visibleCount = 0;
+    
+    noteCards.forEach(card => {
+        const noteId = card.dataset.noteId;
+        // Find the note data
+        const hasBadges = card.querySelector('.note-categories');
+        const hasImportant = card.querySelector('.category-badge.important');
+        const hasBookmarked = card.querySelector('.category-badge.bookmarked');
+        
+        let shouldShow = false;
+        
+        if (currentFilter === 'all') {
+            shouldShow = true;
+        } else if (currentFilter === 'important') {
+            shouldShow = hasImportant !== null;
+        } else if (currentFilter === 'bookmarked') {
+            shouldShow = hasBookmarked !== null;
+        }
+        
+        if (shouldShow) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
         }
     });
+    
+    // Update all count
+    const allCount = document.getElementById('all-count');
+    if (allCount && currentFilter === 'all') {
+        allCount.textContent = visibleCount;
+    }
 }
 
 // ===== HELPER FUNCTIONS =====
 function updateNotesCount(count) {
-    const notesCount = document.getElementById('notes-count');
-    if (notesCount) {
-        notesCount.textContent = count;
+    const allCount = document.getElementById('all-count');
+    if (allCount) {
+        allCount.textContent = count;
     }
 }
 
