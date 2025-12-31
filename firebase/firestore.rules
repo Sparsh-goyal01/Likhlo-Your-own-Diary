@@ -1,0 +1,44 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // Users collection - users can only read/write their own data
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+      
+      // Notes subcollection - only accessible by the owner
+      match /notes/{noteId} {
+        // Allow read if authenticated and is the owner
+        allow read: if isAuthenticated() && isOwner(userId);
+        
+        // Allow create if authenticated and is the owner
+        allow create: if isAuthenticated() && isOwner(userId)
+                      && request.resource.data.keys().hasAll(['title', 'content', 'createdAt'])
+                      && request.resource.data.createdAt is timestamp;
+        
+        // Allow update if authenticated and is the owner  
+        allow update: if isAuthenticated() && isOwner(userId)
+                      && request.resource.data.updatedAt is timestamp;
+        
+        // Allow delete if authenticated and is the owner
+        allow delete: if isAuthenticated() && isOwner(userId);
+      }
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
