@@ -30,6 +30,9 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // Serve static files from public directory (for config.js)
 app.use('/public', express.static(path.join(__dirname, '../public')));
 
+// Serve PWA icons from icons directory
+app.use('/icons', express.static(path.join(__dirname, '../icons')));
+
 // API Routes
 app.use('/api/health', healthRoutes);
 
