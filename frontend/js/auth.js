@@ -17,7 +17,19 @@ if (loginForm) {
         e.preventDefault();
 
         const loginBtn = document.getElementById('login-btn');
-        const { email, password } = getFormData(loginForm);
+        
+        // Get form values directly
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        
+        const email = emailInput ? emailInput.value.trim() : '';
+        const password = passwordInput ? passwordInput.value.trim() : '';
+
+        // Validate required fields
+        if (!email || !password) {
+            showError('error-message', 'Please enter both email and password.');
+            return;
+        }
 
         try {
             setLoading(loginBtn, true);
@@ -66,8 +78,23 @@ if (signupForm) {
         e.preventDefault();
 
         const signupBtn = document.getElementById('signup-btn');
-        const { name, email, password } = getFormData(signupForm);
-        const confirmPassword = document.getElementById('confirm-password').value;
+        
+        // Get form values directly to avoid undefined issues
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        
+        const name = nameInput ? nameInput.value.trim() : '';
+        const email = emailInput ? emailInput.value.trim() : '';
+        const password = passwordInput ? passwordInput.value.trim() : '';
+        const confirmPassword = confirmPasswordInput ? confirmPasswordInput.value.trim() : '';
+
+        // Validate required fields
+        if (!email || !password || !confirmPassword) {
+            showError('error-message', 'Please fill in all required fields.');
+            return;
+        }
 
         // Validate password match
         if (password !== confirmPassword) {
@@ -75,14 +102,27 @@ if (signupForm) {
             return;
         }
 
+        // Validate password length
+        if (password.length < 6) {
+            showError('error-message', 'Password must be at least 6 characters.');
+            return;
+        }
+
         try {
             setLoading(signupBtn, true);
+            console.log('Creating account for:', email);
+            
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            
+            console.log('Account created successfully!');
 
             // Update user profile with name
-            await updateProfile(userCredential.user, {
-                displayName: name
-            });
+            if (name) {
+                await updateProfile(userCredential.user, {
+                    displayName: name
+                });
+                console.log('Profile updated with name:', name);
+            }
 
             // Redirect to dashboard
             window.location.href = 'dashboard.html';
@@ -109,32 +149,63 @@ if (signupForm) {
 const googleLoginBtn = document.getElementById('google-login');
 const googleSignupBtn = document.getElementById('google-signup');
 
-async function handleGoogleAuth() {
+async function handleGoogleAuth(buttonElement) {
     const provider = new GoogleAuthProvider();
+    
+    // Add custom parameters for better UX
+    provider.setCustomParameters({
+        prompt: 'select_account'
+    });
 
     try {
-        await signInWithPopup(auth, provider);
-        window.location.href = 'dashboard.html';
+        if (buttonElement) {
+            setLoading(buttonElement, true, 'Signing in with Google...');
+        }
+
+        console.log('Initiating Google Sign-in...');
+        const result = await signInWithPopup(auth, provider);
+        
+        console.log('Google Sign-in successful!', result.user.email);
+        showSuccess('error-message', 'Signed in successfully! Redirecting...');
+        
+        // Redirect to dashboard
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 500);
+        
     } catch (error) {
         console.error('Google auth error:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        
         let message = 'Google sign-in failed. Please try again.';
 
         if (error.code === 'auth/popup-closed-by-user') {
-            message = 'Sign-in cancelled.';
+            message = 'Sign-in cancelled. Please try again.';
+        } else if (error.code === 'auth/popup-blocked') {
+            message = 'Popup was blocked. Please allow popups for this site.';
         } else if (error.code === 'auth/account-exists-with-different-credential') {
-            message = 'An account already exists with this email.';
+            message = 'An account already exists with this email using a different sign-in method.';
+        } else if (error.code === 'auth/operation-not-allowed') {
+            message = 'Google Sign-in is not enabled. Please contact support or enable it in Firebase Console.';
+        } else if (error.code === 'auth/unauthorized-domain') {
+            message = 'This domain is not authorized for Google Sign-in. Please add it to authorized domains in Firebase Console.';
         }
 
         showError('error-message', message);
+        
+        if (buttonElement) {
+            setLoading(buttonElement, false);
+        }
     }
 }
 
 if (googleLoginBtn) {
-    googleLoginBtn.addEventListener('click', handleGoogleAuth);
+    googleLoginBtn.addEventListener('click', () => handleGoogleAuth(googleLoginBtn));
 }
 
 if (googleSignupBtn) {
-    googleSignupBtn.addEventListener('click', handleGoogleAuth);
+    googleSignupBtn.addEventListener('click', () => handleGoogleAuth(googleSignupBtn));
 }
 
 

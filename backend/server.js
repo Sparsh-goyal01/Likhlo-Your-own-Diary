@@ -27,6 +27,9 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from frontend directory
 app.use(express.static(path.join(__dirname, '../frontend')));
 
+// Serve static files from public directory (for config.js)
+app.use('/public', express.static(path.join(__dirname, '../public')));
+
 // API Routes
 app.use('/api/health', healthRoutes);
 

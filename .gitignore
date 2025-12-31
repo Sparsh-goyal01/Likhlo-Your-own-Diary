@@ -5,6 +5,9 @@ package-lock.json
 # Environment variables
 .env
 
+# Generated configuration (will be built from environment variables)
+public/config.js
+
 # Logs
 logs
 *.log
