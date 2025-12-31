@@ -220,7 +220,15 @@ if (resetForm) {
 
         try {
             setLoading(resetBtn, true);
-            await sendPasswordResetEmail(auth, email);
+            
+            // Configure action code settings with proper URL
+            const actionCodeSettings = {
+                // URL to redirect back to after password reset
+                url: window.location.origin + '/index.html',
+                handleCodeInApp: false
+            };
+
+            await sendPasswordResetEmail(auth, email, actionCodeSettings);
 
             // Show success modal
             const modal = document.getElementById('success-modal');
@@ -231,12 +239,21 @@ if (resetForm) {
             resetForm.reset();
         } catch (error) {
             console.error('Password reset error:', error);
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
+            
             let message = 'Failed to send reset email. Please try again.';
 
             if (error.code === 'auth/user-not-found') {
                 message = 'No account found with this email.';
             } else if (error.code === 'auth/invalid-email') {
                 message = 'Invalid email address.';
+            } else if (error.code === 'auth/missing-continue-uri') {
+                message = 'Configuration error. Please contact support.';
+            } else if (error.code === 'auth/invalid-continue-uri') {
+                message = 'Configuration error. Please contact support.';
+            } else if (error.code === 'auth/unauthorized-continue-uri') {
+                message = 'This domain is not authorized. Please add it to Firebase authorized domains.';
             }
 
             showError('error-message', message);
