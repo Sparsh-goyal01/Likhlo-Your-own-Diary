@@ -8,7 +8,8 @@
     "start": "node backend/server.js",
     "dev": "node --watch backend/server.js",
     "build": "node build-config.js",
-    "deploy:firebase": "npm run build && firebase deploy",
+    "deploy:vercel": "npm run build && vercel --prod",
+    "deploy:netlify": "npm run build && netlify deploy --prod",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
