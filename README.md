@@ -1,32 +1,362 @@
-# 📝 Likhlo - Cloud Notes Application
+# Likhlo - Your Own Diary
 
-<div align="center">
-
-![Likhlo Banner](https://img.shields.io/badge/Likhlo-Notes%20App-purple?style=for-the-badge)
-[![Firebase](https://img.shields.io/badge/Firebase-12.7.0-orange?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-
-**A modern, secure, and beautiful cloud-based notes application built with Firebase**
-
-[Live Demo](#) • [Features](#features) • [Installation](#installation) • [Documentation](#documentation)
-
-</div>
+A production-grade secure notes application built with Firebase and modern web technologies.
 
 ---
 
-## ✨ Features
+## 🏗️ Architecture
 
-### 🔐 Authentication
-- **Email/Password** - Traditional secure login
-- **Google OAuth** - One-click sign-in with Google
-- **Password Reset** - Easy password recovery via email
+### Tech Stack
 
-### 📱 Notes Management
-- ✅ Create, Read, Update, Delete notes
-- ✅ Real-time synchronization with Firebase
-- ✅ Optimistic UI updates for instant feedback
-- ✅ Search functionality
-- ✅ Grid and List view toggle
+**Backend:**
+- Node.js + Express
+- Firebase Admin SDK
+- JWT authentication
+- Environment-based configuration
+
+**Frontend:**
+- Vanilla JavaScript (ES6+)
+- HTML5 & CSS3
+- Firebase SDK v12.7.0
+- Responsive design with custom CSS
+
+**Database & Auth:**
+- Firebase Firestore (NoSQL)
+- Firebase Authentication
+- Real-time data synchronization
+- Secure security rules
+
+**Shared:**
+- Environment variables for configuration
+- Auto-generated Firebase config
+- Centralized error handling
+
+---
+
+## 📁 Project Structure
+
+```
+Likhlo/
+├── backend/
+│   ├── routes/              # API route handlers
+│   │   └── health.routes.js # Health check endpoint
+│   └── server.js            # Express server setup
+├── frontend/
+│   ├── css/
+│   │   └── style.css        # Global styles
+│   ├── js/
+│   │   ├── auth.js          # Authentication logic
+│   │   ├── notes.js         # Notes CRUD operations
+│   │   ├── firebase-config.js # Firebase initialization
+│   │   └── utils.js         # Utility functions
+│   ├── index.html           # Login page
+│   ├── signup.html          # Registration page
+│   ├── dashboard.html       # Notes dashboard
+│   └── reset.html           # Password reset
+├── firebase/
+│   ├── firestore.rules      # Database security rules
+│   └── firestore.indexes.json # Database indexes
+├── public/
+│   └── config.js            # Auto-generated Firebase config
+├── .env                     # Environment variables
+├── build-config.js          # Config builder script
+└── package.json             # Dependencies and scripts
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js >= 18.0.0
+- npm >= 9.0.0
+- Firebase account (free tier works)
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Sparsh-goyal01/Likhlo-Your-own-Diary.git
+   cd Likhlo-Your-own-Diary
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up Firebase project:**
+   - Go to [Firebase Console](https://console.firebase.google.com)
+   - Create a new project
+   - Enable Authentication → Email/Password
+   - Enable Authentication → Google (optional)
+   - Create Firestore Database
+
+4. **Configure environment variables:**
+   
+   Create `.env` file in root directory:
+   ```env
+   FIREBASE_API_KEY=your_api_key_here
+   FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   FIREBASE_PROJECT_ID=your_project_id
+   FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+   FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   FIREBASE_APP_ID=your_app_id
+   FIREBASE_MEASUREMENT_ID=your_measurement_id
+   PORT=3000
+   NODE_ENV=development
+   CLIENT_URL=http://localhost:3000
+   ```
+
+5. **Build configuration:**
+   ```bash
+   npm run build
+   ```
+
+6. **Deploy Firestore security rules:**
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
+
+### Running the Application
+
+**Development mode:**
+```bash
+npm run dev
+```
+
+This will start the server on http://localhost:3000
+
+**Production mode:**
+```bash
+npm start
+```
+
+**Run separately:**
+```bash
+# Backend only
+cd backend
+node server.js
+
+# Build config
+npm run build
+```
+
+---
+
+## 👤 Demo Credentials
+
+Create your own account through the signup page, or use these test steps:
+
+1. Navigate to http://localhost:3000/signup.html
+2. Fill in the registration form
+3. Login with your credentials
+
+**Google Sign-in:**
+- Enable Google provider in Firebase Console
+- Add `localhost` to authorized domains
+- Click "Continue with Google" button
+
+---
+
+## 🔑 Features
+
+### Core Modules
+
+✅ **User Authentication**
+- Email/Password registration and login
+- Google OAuth integration
+- Password reset via email
+- JWT-based session management
+- Secure password hashing (handled by Firebase)
+
+✅ **Notes Management**
+- Create notes with title and content
+- Edit existing notes
+- Delete notes with confirmation
+- Real-time synchronization across devices
+- Automatic save on edit
+- Timestamp tracking (created/updated)
+
+✅ **User Interface**
+- Clean, modern design
+- Responsive layout (mobile-friendly)
+- Real-time updates
+- Loading states and error handling
+- Success/error notifications
+- Password visibility toggle
+
+✅ **Security**
+- Firestore security rules
+- User data isolation
+- Environment variable protection
+- CORS configuration
+- Input validation
+- XSS protection
+
+---
+
+## 📡 API Endpoints
+
+### Health Check
+- `GET /api/health` - Server health status
+
+**Note:** This is primarily a client-side application. Most operations (auth, CRUD) are handled directly through Firebase SDK on the frontend.
+
+---
+
+## 🔥 Firebase Configuration
+
+### Services Used
+
+**Firebase Authentication:**
+- Email/Password provider
+- Google OAuth provider
+- Password reset emails
+- User management
+
+**Firestore Database:**
+- NoSQL document database
+- Real-time synchronization
+- Offline support
+- Automatic indexing
+
+### Security Rules
+
+Located in `firebase/firestore.rules`:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only access their own notes
+    match /users/{userId}/notes/{noteId} {
+      allow read, write: if request.auth != null 
+                         && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+**What this ensures:**
+- Only authenticated users can access data
+- Users can only see/edit their own notes
+- No cross-user data access
+- Prevents unauthorized modifications
+
+---
+
+## 🛡️ Security Features
+
+- ✅ Firebase Authentication for user management
+- ✅ Firestore Security Rules for data protection
+- ✅ Environment variables for sensitive config
+- ✅ CORS protection
+- ✅ Input validation and sanitization
+- ✅ Secure password handling (Firebase)
+- ✅ JWT token management
+- ✅ User data isolation
+
+---
+
+## 🔧 Development
+
+### Build for Local Testing
+
+```bash
+# Generate config from environment
+npm run build
+
+# Start development server
+npm run dev
+```
+
+### Available Scripts
+
+```json
+{
+  "start": "node backend/server.js",
+  "dev": "node --watch backend/server.js",
+  "build": "node build-config.js"
+}
+```
+
+### Code Quality
+
+- Vanilla JavaScript for simplicity
+- ES6+ features (async/await, modules)
+- Modular file structure
+- Consistent naming conventions
+- Error handling on all operations
+- Console logging for debugging
+
+---
+
+## 📊 Database Schema
+
+### Collections Structure
+
+```
+users/{userId}/
+  └── notes/{noteId}
+      ├── title: string
+      ├── content: string
+      ├── createdAt: timestamp
+      ├── updatedAt: timestamp
+      └── userId: string
+```
+
+### Data Flow
+
+1. User authenticates via Firebase Auth
+2. Frontend gets user ID from auth state
+3. All notes stored in `/users/{userId}/notes/` collection
+4. Security rules enforce user isolation
+5. Real-time listeners update UI automatically
+
+---
+
+## 🌐 Browser Support
+
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
+- Mobile browsers (iOS Safari, Chrome Mobile)
+
+---
+
+## 📝 Notes
+
+- All Firebase operations use modular SDK (v9+)
+- CDN imports for Firebase modules (no build step needed)
+- SQLite is NOT used - everything is in Firestore
+- Works offline with Firebase's built-in caching
+- Auto-generates config from `.env` for security
+
+---
+
+## 🚧 Future Enhancements
+
+- [ ] Note categories and tags
+- [ ] Rich text editor (Markdown support)
+- [ ] Dark mode toggle
+- [ ] Note sharing functionality
+- [ ] Export notes (PDF, TXT, JSON)
+- [ ] Note search and filtering
+- [ ] Note archiving
+- [ ] Trash/recycle bin
+- [ ] Note templates
+- [ ] Collaboration features
+- [ ] Email notifications
+- [ ] Multi-language support
+- [ ] Voice-to-text notes
+- [ ] File attachments
+- [ ] Note versioning/history
+
+---
+
+Built with ❤️ by Sparsh Goyal
 - ✅ Automatic timestamps (created, updated)
 
 ### 🎨 User Interface
