@@ -39,8 +39,15 @@ window.FIREBASE_CONFIG = {
 };
 `;
 
+// Create public directory if it doesn't exist
+const publicDir = path.join(__dirname, 'public');
+if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+    console.log('📁 Created public directory');
+}
+
 // Write to public/config.js
-const outputPath = path.join(__dirname, 'public', 'config.js');
+const outputPath = path.join(publicDir, 'config.js');
 fs.writeFileSync(outputPath, configContent);
 
 console.log('✅ Configuration file generated successfully at:', outputPath);
