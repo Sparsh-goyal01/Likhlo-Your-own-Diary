@@ -1,6 +1,6 @@
 {
     "name": "cloud-notes-app",
-    "version": "1.0.0",
+    "version": "2",
     "builds": [
         {
             "src": "backend/server.js",
