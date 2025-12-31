@@ -1054,7 +1054,7 @@ body {
 
 .note-content-input {
     resize: vertical;
-    min-height: 200px;
+    min-height: 100px;
     border: none;
     padding: 0.75rem 0;
 }
