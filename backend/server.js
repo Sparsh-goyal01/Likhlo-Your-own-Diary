@@ -53,6 +53,10 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
 });
 
+app.get('/dashboard.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
+});
+
 // 404 Handler
 app.use((req, res) => {
     res.status(404).json({

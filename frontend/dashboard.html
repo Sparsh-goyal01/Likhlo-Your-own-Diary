@@ -62,17 +62,42 @@
             <!-- Title -->
             <h1 class="page-title">My Notes</h1>
 
-            <!-- Filter Buttons -->
-            <div class="filter-buttons">
-                <button class="filter-btn active" data-filter="all">
-                    All (<span id="all-count">0</span>)
-                </button>
-                <button class="filter-btn" data-filter="important">
-                    Important
-                </button>
-                <button class="filter-btn" data-filter="bookmarked">
-                    Bookmarked
-                </button>
+            <!-- Filter and View Toggle -->
+            <div class="notes-controls">
+                <!-- Filter Buttons -->
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-filter="all">
+                        All (<span id="all-count">0</span>)
+                    </button>
+                    <button class="filter-btn" data-filter="important">
+                        Important
+                    </button>
+                    <button class="filter-btn" data-filter="bookmarked">
+                        Bookmarked
+                    </button>
+                </div>
+
+                <!-- View Toggle -->
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="grid" title="Grid view">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                    </button>
+                    <button class="view-btn" data-view="list" title="List view">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Notes Grid -->
@@ -193,6 +218,56 @@
                 <button type="button" class="btn btn-danger" id="confirm-delete">
                     <span class="btn-text">Delete</span>
                     <div class="spinner" style="display: none;"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Note Modal -->
+    <div id="share-modal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content share-modal-content">
+            <div class="modal-header">
+                <h2>Share Note</h2>
+                <button class="modal-close" id="close-share-modal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="share-content">
+                <div class="share-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2">
+                        <circle cx="18" cy="5" r="3"/>
+                        <circle cx="6" cy="12" r="3"/>
+                        <circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                </div>
+                <p class="share-description">Anyone with this link can view your note</p>
+
+                <div class="share-link-container">
+                    <input type="text" id="share-link-input" class="share-link-input" readonly>
+                    <button type="button" class="btn btn-primary" id="copy-link-btn">
+                        <span class="btn-text">Copy Link</span>
+                        <div class="spinner" style="display: none;"></div>
+                    </button>
+                </div>
+
+                <div id="share-success-message" class="share-success-message" style="display: none;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span>Link copied to clipboard!</span>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="close-share-btn">
+                    Close
                 </button>
             </div>
         </div>

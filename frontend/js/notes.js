@@ -10,7 +10,9 @@ import {
     query,
     orderBy,
     serverTimestamp,
-    onSnapshot
+    onSnapshot,
+    where,
+    getDoc
 } from 'https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js';
 import { signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js';
 import { showError, setLoading, formatDate } from './utils.js';
@@ -39,8 +41,17 @@ onAuthStateChanged(auth, (user) => {
     if (userEmail) userEmail.textContent = user.email;
     if (userDisplayName) userDisplayName.textContent = user.displayName || 'User';
 
-    // Load notes
-    loadNotes();
+    // Check if viewing a shared note
+    const urlParams = new URLSearchParams(window.location.search);
+    const shareToken = urlParams.get('share');
+    
+    if (shareToken) {
+        // Load the shared note
+        loadSharedNote(shareToken);
+    } else {
+        // Load user's own notes
+        loadNotes();
+    }
 });
 
 // ===== LOAD NOTES FROM FIRESTORE =====
@@ -90,6 +101,173 @@ function loadNotes() {
             showError('error-message', 'Failed to load notes. Please refresh the page.');
         }
     );
+}
+
+// ===== LOAD SHARED NOTE =====
+async function loadSharedNote(shareToken) {
+    const loadingState = document.getElementById('loading-state');
+    const notesContainer = document.getElementById('notes-container');
+    const emptyState = document.getElementById('empty-state');
+    const filterButtons = document.querySelector('.filter-buttons');
+    const addNoteBtn = document.getElementById('add-note-btn');
+    
+    if (loadingState) loadingState.style.display = 'block';
+    if (notesContainer) notesContainer.innerHTML = '';
+    if (emptyState) emptyState.style.display = 'none';
+    
+    // Hide filter buttons and add button for shared view
+    if (filterButtons) filterButtons.style.display = 'none';
+    if (addNoteBtn) addNoteBtn.style.display = 'none';
+    
+    try {
+        // Parse the share token to get userId and noteId
+        // Format: userId:noteId:randomString
+        const parts = shareToken.split(':');
+        
+        if (parts.length < 2) {
+            throw new Error('Invalid share token format');
+        }
+        
+        const ownerUid = parts[0];
+        const noteId = parts[1];
+        
+        // Try to fetch the note directly
+        const noteDocRef = doc(db, 'users', ownerUid, 'notes', noteId);
+        const noteSnapshot = await getDoc(noteDocRef);
+        
+        if (loadingState) loadingState.style.display = 'none';
+        
+        if (noteSnapshot.exists()) {
+            const noteData = noteSnapshot.data();
+            
+            // Verify the note is actually shared and has the correct token
+            if (noteData.isShared && noteData.shareToken === shareToken) {
+                const foundNote = {
+                    id: noteSnapshot.id,
+                    ...noteData
+                };
+                
+                // Display the shared note
+                const noteCard = createSharedNoteCard(foundNote, ownerUid);
+                if (notesContainer) notesContainer.appendChild(noteCard);
+                
+                // Show a banner indicating this is a shared note
+                showSharedNoteBanner();
+            } else {
+                // Note exists but is not shared
+                throw new Error('Note is not shared');
+            }
+        } else {
+            // Note not found
+            throw new Error('Note not found');
+        }
+        
+    } catch (error) {
+        console.error('Error loading shared note:', error);
+        if (loadingState) loadingState.style.display = 'none';
+        
+        if (emptyState) {
+            emptyState.innerHTML = `
+                <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                    <circle cx="60" cy="60" r="60" fill="#f3f4f6" />
+                    <path d="M40 35h40v50H40z" fill="white" stroke="#e5e7eb" stroke-width="2" />
+                    <line x1="45" y1="60" x2="75" y2="60" stroke="#d1d5db" stroke-width="3" />
+                </svg>
+                <h2>Note not found</h2>
+                <p>This shared note doesn't exist or is no longer available</p>
+                <button class="btn btn-primary" onclick="window.location.href='dashboard.html'">
+                    Go to My Notes
+                </button>
+            `;
+            emptyState.style.display = 'block';
+        }
+    }
+}
+
+// Create a card for shared notes (read-only)
+function createSharedNoteCard(note, ownerUid) {
+    const card = document.createElement('div');
+    
+    const noteColor = note.color || noteColors[Math.floor(Math.random() * noteColors.length)];
+    card.className = `note-card ${noteColor} shared-note`;
+    card.dataset.noteId = note.id;
+
+    const createdDate = note.createdAt ? formatDate(note.createdAt.toDate()) : 'Just now';
+
+    // Build category badges HTML
+    let categoriesHtml = '';
+    if (note.categories && note.categories.length > 0) {
+        categoriesHtml = '<div class="note-categories">';
+        note.categories.forEach(category => {
+            if (category === 'important') {
+                categoriesHtml += `
+                    <span class="category-badge important">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                        Important
+                    </span>`;
+            } else if (category === 'bookmarked') {
+                categoriesHtml += `
+                    <span class="category-badge bookmarked">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Bookmarked
+                    </span>`;
+            }
+        });
+        categoriesHtml += '</div>';
+    }
+
+    card.innerHTML = `
+        <div class="shared-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="18" cy="5" r="3"/>
+                <circle cx="6" cy="12" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Shared with you
+        </div>
+        ${categoriesHtml}
+        <div class="note-card-header">
+            <h3>${escapeHtml(note.title)}</h3>
+        </div>
+        <p class="note-content">${escapeHtml(note.content)}</p>
+        <div class="note-footer">
+            <span class="note-date">${createdDate}</span>
+        </div>
+    `;
+
+    return card;
+}
+
+function showSharedNoteBanner() {
+    const main = document.querySelector('.dashboard-main');
+    const existingBanner = document.getElementById('shared-note-banner');
+    
+    // Don't add banner if it already exists
+    if (existingBanner) return;
+    
+    const banner = document.createElement('div');
+    banner.id = 'shared-note-banner';
+    banner.className = 'shared-note-banner';
+    banner.innerHTML = `
+        <div class="banner-content">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <span>You're viewing a shared note. <a href="dashboard.html" style="color: inherit; text-decoration: underline;">Go to your notes</a></span>
+        </div>
+    `;
+    
+    if (main) {
+        main.insertBefore(banner, main.firstChild);
+    }
 }
 
 // ===== RENDER NOTES IN UI =====
@@ -158,6 +336,15 @@ function createNoteCard(note) {
         <div class="note-card-header">
             <h3>${escapeHtml(note.title)}</h3>
             <div class="note-card-actions">
+                <button class="note-action-btn share-note" title="Share note">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="18" cy="5" r="3"/>
+                        <circle cx="6" cy="12" r="3"/>
+                        <circle cx="18" cy="19" r="3"/>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                </button>
                 <button class="note-action-btn edit-note" title="Edit note">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -179,8 +366,14 @@ function createNoteCard(note) {
     `;
 
     // Event listeners
+    const shareBtn = card.querySelector('.share-note');
     const editBtn = card.querySelector('.edit-note');
     const deleteBtn = card.querySelector('.delete-note');
+
+    shareBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openShareModal(note);
+    });
 
     editBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -411,6 +604,103 @@ function closeDeleteModal() {
     currentNoteId = null;
 }
 
+// ===== SHARE NOTE =====
+let currentShareNoteId = null;
+
+function openShareModal(note) {
+    const modal = document.getElementById('share-modal');
+    const linkInput = document.getElementById('share-link-input');
+    const successMessage = document.getElementById('share-success-message');
+    
+    currentShareNoteId = note.id;
+    
+    // Generate share link
+    generateShareLink(note);
+    
+    // Hide success message
+    if (successMessage) successMessage.style.display = 'none';
+    
+    modal.style.display = 'flex';
+}
+
+async function generateShareLink(note) {
+    const linkInput = document.getElementById('share-link-input');
+    
+    try {
+        // Generate a unique share token if not exists
+        let shareToken = note.shareToken;
+        
+        if (!shareToken) {
+            // Create unique token - format: userId:noteId:randomString
+            const randomPart = Math.random().toString(36).substr(2, 9);
+            shareToken = `${currentUser.uid}:${note.id}:${randomPart}`;
+            
+            // Save share token to note document
+            const noteDoc = doc(db, 'users', currentUser.uid, 'notes', note.id);
+            await updateDoc(noteDoc, {
+                shareToken: shareToken,
+                isShared: true,
+                sharedAt: serverTimestamp()
+            });
+        }
+        
+        // Generate the share URL
+        const shareUrl = `${window.location.origin}/dashboard.html?share=${shareToken}`;
+        linkInput.value = shareUrl;
+        
+    } catch (error) {
+        console.error('Error generating share link:', error);
+        linkInput.value = 'Error generating link. Please try again.';
+    }
+}
+
+function closeShareModal() {
+    const modal = document.getElementById('share-modal');
+    const successMessage = document.getElementById('share-success-message');
+    
+    modal.style.display = 'none';
+    if (successMessage) successMessage.style.display = 'none';
+    currentShareNoteId = null;
+}
+
+// Copy link button
+const copyLinkBtn = document.getElementById('copy-link-btn');
+if (copyLinkBtn) {
+    copyLinkBtn.addEventListener('click', async () => {
+        const linkInput = document.getElementById('share-link-input');
+        const successMessage = document.getElementById('share-success-message');
+        
+        try {
+            await navigator.clipboard.writeText(linkInput.value);
+            
+            // Show success message
+            if (successMessage) {
+                successMessage.style.display = 'flex';
+                setTimeout(() => {
+                    successMessage.style.display = 'none';
+                }, 3000);
+            }
+        } catch (error) {
+            console.error('Error copying link:', error);
+            // Fallback: select the text
+            linkInput.select();
+            document.execCommand('copy');
+            
+            if (successMessage) {
+                successMessage.style.display = 'flex';
+                setTimeout(() => {
+                    successMessage.style.display = 'none';
+                }, 3000);
+            }
+        }
+    });
+}
+
+// Close share modal buttons
+document.getElementById('close-share-modal')?.addEventListener('click', closeShareModal);
+document.getElementById('close-share-btn')?.addEventListener('click', closeShareModal);
+
+
 document.getElementById('close-modal')?.addEventListener('click', closeNoteModal);
 document.getElementById('cancel-note')?.addEventListener('click', closeNoteModal);
 document.getElementById('cancel-delete')?.addEventListener('click', closeDeleteModal);
@@ -520,6 +810,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 currentFilter = btn.dataset.filter;
                 applyFilter();
+            });
+        });
+    }
+
+    // ===== VIEW TOGGLE =====
+    const viewButtons = document.querySelectorAll('.view-btn');
+    const notesContainer = document.getElementById('notes-container');
+    
+    if (viewButtons.length > 0 && notesContainer) {
+        console.log('[Dashboard] Found', viewButtons.length, 'view buttons');
+        
+        viewButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                viewButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                currentView = btn.dataset.view;
+                
+                // Toggle container class
+                if (currentView === 'list') {
+                    notesContainer.classList.remove('notes-grid');
+                    notesContainer.classList.add('notes-list');
+                } else {
+                    notesContainer.classList.remove('notes-list');
+                    notesContainer.classList.add('notes-grid');
+                }
+                
+                console.log('[Dashboard] View changed to:', currentView);
             });
         });
     }

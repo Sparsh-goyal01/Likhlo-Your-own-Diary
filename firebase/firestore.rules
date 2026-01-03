@@ -19,8 +19,8 @@ service cloud.firestore {
       
       // Notes subcollection - only accessible by the owner
       match /notes/{noteId} {
-        // Allow read if authenticated and is the owner
-        allow read: if isAuthenticated() && isOwner(userId);
+        // Allow read if authenticated and is the owner OR if the note is shared
+        allow read: if isAuthenticated() && (isOwner(userId) || resource.data.isShared == true);
         
         // Allow create if authenticated and is the owner
         allow create: if isAuthenticated() && isOwner(userId)
